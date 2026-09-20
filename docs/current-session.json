@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "activeSession": 13,
+  "name": "Hardening and release",
+  "brief": "docs/sessions/13-hardening-release.md",
+  "completedSessions": [
+    {
+      "id": 1,
+      "completedOn": "2026-09-15",
+      "summary": "Created the Android/Compose foundation, product documentation, and polished browser shell.",
+      "verification": [
+        "./gradlew :app:testDebugUnitTest",
+        "./gradlew :app:assembleDebug"
+      ]
+    },
+    {
+      "id": 2,
+      "completedOn": "2026-09-15",
+      "summary": "Implemented lifecycle-safe single-tab WebView browsing with secure defaults, URL/search parsing, navigation, progress, title, errors, back dispatch, and state restoration.",
+      "verification": [
+        "./gradlew :app:testDebugUnitTest",
+        "./gradlew :app:assembleDebug",
+        "./gradlew :app:connectedDebugAndroidTest"
+      ]
+    },
+    {
+      "id": 3,
+      "completedOn": "2026-09-15",
+      "summary": "Implemented callback-only original HTML, rendered DOM, and visible-text extraction with on-device viewers, clipboard abstraction, accessible copy feedback, and local WebView fixture coverage.",
+      "verification": [
+        "./gradlew :app:testDebugUnitTest",
+        "./gradlew :app:connectedDebugAndroidTest",
+        "./gradlew :app:assembleDebug"
+      ]
+    },
+    {
+      "id": 4,
+      "completedOn": "2026-09-15",
+      "summary": "Implemented bounded per-tab JavaScript console capture with level, source, line, timestamp seams, level and errors-only filters, local copy/clear/export actions, and a floating entry button.",
+      "verification": [
+        "./gradlew :app:testDebugUnitTest",
+        "./gradlew :app:connectedDebugAndroidTest",
+        "./gradlew :app:assembleDebug"
+      ]
+    },
+    {
+      "id": 5,
+      "completedOn": "2026-09-15",
+      "summary": "Implemented immersive system-bar and app-chrome hiding with an always-available accessible exit control, seven persisted position modes including normalized free drag, and size, opacity, and auto-hide controls.",
+      "verification": [
+        "./gradlew :app:testDebugUnitTest",
+        "./gradlew :app:connectedDebugAndroidTest",
+        "./gradlew :app:assembleDebug"
+      ]
+    },
+    {
+      "id": 6,
+      "completedOn": "2026-09-15",
+      "summary": "Implemented on-device URL, title, link, image URL, Markdown, and selected-HTML extraction plus long-press element inspection with a visible selection overlay, tag/id/class/selector details, and validated selector re-query behavior.",
+      "verification": [
+        "./gradlew :app:testDebugUnitTest",
+        "./gradlew :app:connectedDebugAndroidTest",
+        "./gradlew :app:assembleDebug"
+      ]
+    },
+    {
+      "id": 7,
+      "completedOn": "2026-09-15",
+      "summary": "Implemented active-page title, URL, SSL, load-time, viewport, metadata, Open Graph, favicon, cookies, localStorage, and sessionStorage inspection with local copy and confirmed origin-scoped clear actions.",
+      "verification": [
+        "./gradlew :app:testDebugUnitTest",
+        "./gradlew :app:connectedDebugAndroidTest",
+        "./gradlew :app:assembleDebug"
+      ]
+    },
+    {
+      "id": 8,
+      "completedOn": "2026-09-15",
+      "summary": "Implemented a bounded per-tab observable request log with method, reported HTTP error status, local block status, explicit WebView visibility limits, and reload-applied per-tab JavaScript, ad-blocking, image, and validated Mobile/Desktop/Custom user-agent controls.",
+      "verification": [
+        "./gradlew :app:testDebugUnitTest",
+        "./gradlew :app:connectedDebugAndroidTest",
+        "./gradlew :app:assembleDebug"
+      ]
+    },
+    {
+      "id": 9,
+      "completedOn": "2026-09-15",
+      "summary": "Implemented bounded tab create/switch/close with one live WebView, per-tab saved state and logs, explicit incognito boundary clearing and no-history policy, and native find-in-page controls with match feedback.",
+      "verification": [
+        "./gradlew :app:testDebugUnitTest",
+        "./gradlew :app:connectedDebugAndroidTest",
+        "./gradlew :app:assembleDebug"
+      ]
+    },
+    {
+      "id": 10,
+      "completedOn": "2026-09-15",
+      "summary": "Implemented graceful focused reader extraction, reversible per-tab page dark transforms, bounded full-page PNG capture, and user-selected Storage Access Framework exports for original HTML, rendered HTML, and visible text.",
+      "verification": [
+        "./gradlew :app:testDebugUnitTest",
+        "./gradlew :app:connectedDebugAndroidTest",
+        "./gradlew :app:assembleDebug"
+      ]
+    },
+    {
+      "id": 11,
+      "completedOn": "2026-09-15",
+      "summary": "Implemented bounded on-device history and bookmarks with strict incognito gating, cancellable DownloadManager handoff, Android text sharing, and a permission-rationalized CameraX/ML Kit QR URL scanner with invalid-input handling.",
+      "verification": [
+        "./gradlew :app:testDebugUnitTest",
+        "./gradlew :app:connectedDebugAndroidTest",
+        "./gradlew :app:assembleDebug"
+      ]
+    },
+    {
+      "id": 12,
+      "completedOn": "2026-09-15",
+      "summary": "Implemented the complete typed developer settings catalog with grouped Material UI, theme-aware Light/Dark/AMOLED palettes, per-setting effects (search engine, DNT, screen-on, defaults, preferred plain/Markdown copy for links and images, console policy, CSS/JS injection), schema-validated import/export, a usable saved user-agent list, a download-folder picker used as the SAF export start location with documented DownloadManager limits, and activity-finish-only clear-on-exit.",
+      "verification": [
+        "./gradlew :app:testDebugUnitTest",
+        "./gradlew :app:connectedDebugAndroidTest",
+        "./gradlew :app:assembleDebug"
+      ]
+    }
+  ],
+  "activeSessionEvidence": {
+    "date": "2026-09-17",
+    "completedScope": "Browser customization including combined-view navigation and compact network overlay",
+    "taskList": "docs/customization-tasks.md",
+    "verification": [
+      "68 unit tests passed",
+      "31 instrumentation tests passed on API 36",
+      "All three APKs built with ./build.sh",
+      "Signed release signature and 16 KB alignment verified",
+      "Unsigned release size gate passed: 11599062 bytes",
+      "Signed release certificate unchanged; emulator installation passed"
+    ],
+    "remaining": "Original session 13 release hardening and full supported-API smoke matrix",
+    "signedRelease": {
+      "date": "2026-09-17",
+      "script": "build.sh",
+      "output": "app/build/outputs/apk/release/app-release-signed.apk",
+      "sizeBytes": 11643633,
+      "verification": [
+        "sh -n build.sh passed",
+        "./build.sh passed twice; signing certificate unchanged",
+        "apksigner verification and 16 KB zip alignment passed",
+        "Signed release installation succeeded on API 36 emulator"
+      ],
+      "keyLocation": ".signing/ (ignored; back up securely)"
+    },
+    "compactFollowup": {
+      "date": "2026-09-17",
+      "diagnosis": "Empty live capture had no visible status; real WebView capture/rendering verified",
+      "selectionButton": "Six positions and independent 5\u201380dp size",
+      "compactSizes": "5dp/sp minimum with unchanged defaults; optional status row; 5\u201395% console share"
+    },
+    "consoleBadgeFollowup": {
+      "date": "2026-09-17",
+      "settings": [
+        "Show console message button",
+        "Console message button size: 5\u201380dp",
+        "Console message button content: icon + count / icon / count"
+      ],
+      "alignment": "Main icons-only and labels-only content centered horizontally and vertically",
+      "verification": "67 unit tests; 28 device tests; all APKs built; existing release certificate verified"
+    },
+    "liveNavigationFollowup": {
+      "defaults": "Back, Refresh, Network on; Forward, Stop off",
+      "settings": "Individual/whole-row visibility, top/bottom position, 5\u201380dp size (32dp default)",
+      "network": "Overlay uses console bounds/font/auto-scroll; close restores console; page retained",
+      "verification": "68 unit tests, 31 instrumentation tests; all three APKs built; same release certificate"
+    }
+  }
+}

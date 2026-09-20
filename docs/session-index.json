@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "project": "LightCopy Browser",
+  "sessions": [
+    {"id": 1, "slug": "foundation-browser-shell", "brief": "docs/sessions/01-foundation-browser-shell.md"},
+    {"id": 2, "slug": "secure-single-tab-browsing", "brief": "docs/sessions/02-secure-single-tab-browsing.md"},
+    {"id": 3, "slug": "source-and-text-copy", "brief": "docs/sessions/03-source-and-text-copy.md"},
+    {"id": 4, "slug": "console-and-log-export", "brief": "docs/sessions/04-console-and-log-export.md"},
+    {"id": 5, "slug": "fullscreen-system", "brief": "docs/sessions/05-fullscreen-system.md"},
+    {"id": 6, "slug": "advanced-copy-and-inspector", "brief": "docs/sessions/06-advanced-copy-and-inspector.md"},
+    {"id": 7, "slug": "page-info-and-storage", "brief": "docs/sessions/07-page-info-and-storage.md"},
+    {"id": 8, "slug": "network-and-dev-toggles", "brief": "docs/sessions/08-network-and-dev-toggles.md"},
+    {"id": 9, "slug": "tabs-incognito-find", "brief": "docs/sessions/09-tabs-incognito-find.md"},
+    {"id": 10, "slug": "reader-screenshot-save", "brief": "docs/sessions/10-reader-screenshot-save.md"},
+    {"id": 11, "slug": "browser-utilities", "brief": "docs/sessions/11-browser-utilities.md"},
+    {"id": 12, "slug": "developer-settings", "brief": "docs/sessions/12-developer-settings.md"},
+    {"id": 13, "slug": "hardening-release", "brief": "docs/sessions/13-hardening-release.md"}
+  ]
+}
