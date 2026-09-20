@@ -7,8 +7,9 @@ enum class PageExportKind(val label: String, val extractionKind: ExtractionKind,
 }
 
 object ExportFileNames {
+    fun safeTitle(title: String): String = title.trim().replace(Regex("[^A-Za-z0-9._-]+"), "-").trim('-').take(60).ifEmpty { "page" }
     fun page(title: String, kind: PageExportKind): String {
-        val safe = title.trim().replace(Regex("[^A-Za-z0-9._-]+"), "-").trim('-').take(60).ifEmpty { "page" }
+        val safe = safeTitle(title)
         return "$safe-${kind.name.lowercase()}.${kind.extension}"
     }
 }

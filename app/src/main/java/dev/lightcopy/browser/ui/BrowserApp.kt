@@ -71,6 +71,7 @@ import dev.lightcopy.browser.tabs.TabRegistry
 import dev.lightcopy.browser.copy.PageExportKind
 import dev.lightcopy.browser.copy.ExportFileNames
 import java.io.OutputStreamWriter
+import java.io.File
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import android.Manifest
@@ -94,11 +95,14 @@ fun BrowserApp(
     val fullscreenStore = remember(applicationContext) { LocalFullscreenPreferencesStore(applicationContext) }
     val appSettingsStore = remember(applicationContext) { LocalAppSettingsStore(applicationContext) }
     val savedAppSettings = remember(applicationContext) { appSettingsStore.load() }
+    val startingUrl = remember(savedAppSettings) { normalizeAddress(savedAppSettings.startingPageUrl, savedAppSettings.searchEngine) }
     val tabs = remember { TabRegistry() }
     val tabStates = remember { mutableMapOf<String, BrowserShellState>() }
     val webStates = remember { mutableMapOf<String, Bundle>() }
     var state by remember {
         mutableStateOf(BrowserShellState(
+            address = savedAppSettings.startingPageUrl,
+            currentUrl = startingUrl,
             fullscreenPreferences = fullscreenStore.load(),
             appSettings = savedAppSettings,
             appSettingsDraft = savedAppSettings,
@@ -171,6 +175,17 @@ fun BrowserApp(
             } ?: error("Unable to open destination")
         }.isSuccess
         pendingBitmap = null
+        state = reduce(state, BrowserAction.PageSaved(success))
+    }
+    var pendingArchive by remember { mutableStateOf<File?>(null) }
+    val archiveLauncher = rememberLauncherForActivityResult(ExportDocumentContract("multipart/related")) { uri ->
+        val archive = pendingArchive
+        val success = uri != null && archive != null && runCatching {
+            applicationContext.contentResolver.openOutputStream(uri)?.use { output -> archive.inputStream().use { it.copyTo(output) } }
+                ?: error("Unable to open destination")
+        }.isSuccess
+        archive?.delete()
+        pendingArchive = null
         state = reduce(state, BrowserAction.PageSaved(success))
     }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -253,6 +268,20 @@ fun BrowserApp(
                     }
                 }
             }
+            BrowserAction.SavePageArchive -> {
+                state = reduce(state, action)
+                val archive = File(applicationContext.cacheDir, "lightcopy-page-${System.nanoTime()}.mht")
+                controller.saveWebArchive(archive.absolutePath) { savedPath ->
+                    if (savedPath == null) state = state.copy(feedback = "Page archive failed")
+                    else {
+                        pendingArchive = File(savedPath)
+                        archiveLauncher.launch(ExportDocumentInput(
+                            ExportFileNames.safeTitle(state.title) + "-complete.mht",
+                            exportFolder(),
+                        ))
+                    }
+                }
+            }
             is BrowserAction.CreateTab -> {
                 val outgoing = tabs.active()
                 val saved = Bundle().also(controller::saveState)
@@ -263,6 +292,8 @@ fun BrowserApp(
                 else {
                     if (IncognitoPolicy.requiresSharedDataClear(outgoing.incognito, created.incognito)) controller.clearSharedBrowsingData()
                     state = BrowserShellState(
+                        address = state.appSettings.startingPageUrl,
+                        currentUrl = normalizeAddress(state.appSettings.startingPageUrl, state.appSettings.searchEngine),
                         fullscreenPreferences = state.fullscreenPreferences,
                         appSettings = state.appSettings,
                         appSettingsDraft = state.appSettings,
@@ -325,6 +356,13 @@ fun BrowserApp(
             }
             BrowserAction.ImportSettings -> settingsImportLauncher.launch(arrayOf("application/json", "text/json", "text/plain"))
             BrowserAction.PickDownloadFolder -> downloadFolderLauncher.launch(null)
+            BrowserAction.RunConsoleInput -> {
+                val code = state.consoleInput.trim()
+                if (code.isNotEmpty()) controller.runJavaScript(code) { result ->
+                    consoleLogs.append(tabs.activeId, ConsoleLevel.LOG, result, "Console input", 0)
+                    state = reduce(state.copy(consoleInput = ""), BrowserAction.ConsoleCaptured(consoleLogs.entries(tabs.activeId)))
+                }
+            }
             is BrowserAction.SelectTool -> when (action.tool) {
                 QuickTool.Source -> dispatch(BrowserAction.RequestExtraction(ExtractionKind.OriginalHtml))
                 QuickTool.Text -> dispatch(BrowserAction.RequestExtraction(ExtractionKind.VisibleText))
@@ -876,6 +914,19 @@ private fun ConsoleViewer(state: BrowserShellState, onAction: (BrowserAction) ->
                 OutlinedTextField(state.consoleQuery, { onAction(BrowserAction.SetConsoleQuery(it)) }, label = { Text("Search console") }, singleLine = true, modifier = Modifier.weight(1f))
                 TextButton(onClick = { onAction(BrowserAction.ToggleConsolePause) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.pausedConsoleEntries != null) "Resume" else "Pause") }
             }
+            Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    state.consoleInput,
+                    { onAction(BrowserAction.SetConsoleInput(it)) },
+                    label = { Text("JavaScript input") },
+                    placeholder = { Text("document.title") },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = { onAction(BrowserAction.RunConsoleInput) }),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                Button(onClick = { onAction(BrowserAction.RunConsoleInput) }, enabled = state.consoleInput.isNotBlank(), modifier = Modifier.padding(start = 8.dp).heightIn(min = 48.dp)) { Text("Run") }
+            }
             if (entries.isEmpty()) {
                 Text(
                     if (state.consoleEntries.isEmpty()) "No console messages yet" else "No messages match this filter",
@@ -1243,6 +1294,8 @@ private fun DeveloperControls(state: BrowserShellState, onAction: (BrowserAction
 
                 SettingsSection("BROWSING")
                 EnumSetting("Search engine", state.appSettingsDraft.searchEngine, SearchEngine.entries) { update { s -> s.copy(searchEngine = it) } }
+                OutlinedTextField(value = state.appSettingsDraft.startingPageUrl, onValueChange = { value -> update { it.copy(startingPageUrl = value) } }, label = { Text("Starting page") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedButton(onClick = { onAction(BrowserAction.UseCurrentPageAsStart) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Use current page") }
                 ControlSwitch("New tabs private by default", state.appSettingsDraft.defaultIncognito) { update { s -> s.copy(defaultIncognito = it) } }
                 ControlSwitch("Keep screen on", state.appSettingsDraft.keepScreenOn) { update { s -> s.copy(keepScreenOn = it) } }
                 ControlSwitch("Desktop sites by default", state.appSettingsDraft.desktopByDefault) { update { s -> s.copy(desktopByDefault = it) } }
@@ -1300,6 +1353,12 @@ private fun DeveloperControls(state: BrowserShellState, onAction: (BrowserAction
                 }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add saved user agent") }
                 OutlinedTextField(value = state.appSettingsDraft.cssInjection, onValueChange = { update { s -> s.copy(cssInjection = it) } }, label = { Text("CSS injected after page load") }, supportingText = { Text("On-device only; applies to web pages after reload. Max ${AppSettings.MAX_INJECTION_LENGTH} characters.") }, minLines = 3, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = state.appSettingsDraft.javaScriptInjection, onValueChange = { update { s -> s.copy(javaScriptInjection = it) } }, label = { Text("JavaScript injected after page load") }, supportingText = { Text("Runs in the current page context only; never as a native bridge. Max ${AppSettings.MAX_INJECTION_LENGTH} characters.") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+                Text("Ready-made JavaScript snippets", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    javaScriptSnippets.forEach { snippet ->
+                        OutlinedButton(onClick = { update { it.copy(javaScriptInjection = snippet.code) } }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(snippet.name) }
+                    }
+                }
                 OutlinedButton(onClick = { onAction(BrowserAction.ExportSettings) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Export settings") }
                 OutlinedButton(onClick = { onAction(BrowserAction.ImportSettings) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Import settings") }
                 OutlinedButton(onClick = { onAction(BrowserAction.PickDownloadFolder) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Choose download folder") }
@@ -1359,8 +1418,8 @@ private fun OverflowPanel(
     Surface(modifier, color = Raised, shape = RoundedCornerShape(16.dp), shadowElevation = 12.dp) {
         Column(Modifier.width(220.dp).heightIn(max = 620.dp).verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
             listOf("Tabs", "New tab", "Bookmark page", "Bookmarks", "History", "Share page", "Scan QR URL", "Find in page", "Reader mode", "Page dark mode", "Full-page screenshot", "Save page", "Network log", "Developer controls", "Fullscreen").forEach { item ->
-                Text(item, modifier = Modifier.fillMaxWidth().clickable { when (item) { "Tabs" -> onTabs(); "New tab" -> onNewTab(); "Bookmark page" -> onBookmark(); "Bookmarks" -> onBookmarks(); "History" -> onHistory(); "Share page" -> onShare(); "Scan QR URL" -> onQr(); "Find in page" -> onFind(); "Reader mode" -> onReader(); "Page dark mode" -> onDark(); "Full-page screenshot" -> onCapture(); "Save page" -> onSave(); "Fullscreen" -> onFullscreen(); "Network log" -> onNetwork(); "Developer controls" -> onDeveloperControls() } }
-                    .padding(horizontal = 18.dp, vertical = 13.dp), fontSize = 15.sp)
+                Text(item, color = if (item == "Developer controls") Color(0xFFFF5252) else Color.Unspecified, modifier = Modifier.fillMaxWidth().clickable { when (item) { "Tabs" -> onTabs(); "New tab" -> onNewTab(); "Bookmark page" -> onBookmark(); "Bookmarks" -> onBookmarks(); "History" -> onHistory(); "Share page" -> onShare(); "Scan QR URL" -> onQr(); "Find in page" -> onFind(); "Reader mode" -> onReader(); "Page dark mode" -> onDark(); "Full-page screenshot" -> onCapture(); "Save page" -> onSave(); "Fullscreen" -> onFullscreen(); "Network log" -> onNetwork(); "Developer controls" -> onDeveloperControls() } }
+                    .padding(horizontal = 18.dp, vertical = 13.dp), fontSize = 15.sp, fontWeight = if (item == "Developer controls") FontWeight.Bold else FontWeight.Normal)
             }
         }
     }
@@ -1456,6 +1515,8 @@ private fun SavePageDialog(onAction: (BrowserAction) -> Unit) {
             PageExportKind.entries.forEach { kind ->
                 OutlinedButton(onClick = { onAction(BrowserAction.SavePage(kind)) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(kind.label) }
             }
+            OutlinedButton(onClick = { onAction(BrowserAction.SavePageArchive) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Complete page archive (.mht)") }
+            Text("The archive includes loaded page resources such as images, CSS and JavaScript when WebView can capture them. Server-side PHP source cannot be downloaded by a browser.", color = TextSecondary, fontSize = 12.sp, lineHeight = 17.sp)
         } },
         confirmButton = {},
         dismissButton = { TextButton(onClick = { onAction(BrowserAction.CloseSaveMenu) }, Modifier.heightIn(min = 48.dp)) { Text("Cancel") } },

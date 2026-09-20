@@ -20,6 +20,18 @@ enum class BadgeCorner { BottomRight, BottomLeft, TopRight, TopLeft }
 enum class ActionPlacement { Bottom, Top }
 enum class ActionContent { Both, Icons, Labels }
 
+data class JavaScriptSnippet(val name: String, val code: String)
+val javaScriptSnippets = listOf(
+    JavaScriptSnippet("List links", "console.table([...document.links].map(a => ({ text: a.innerText.trim(), url: a.href })));"),
+    JavaScriptSnippet("List images", "console.table([...document.images].map(img => ({ alt: img.alt, url: img.currentSrc || img.src })));"),
+    JavaScriptSnippet("Page outline", "console.table([...document.querySelectorAll('h1,h2,h3')].map(h => ({ level: h.tagName, text: h.innerText.trim() })));"),
+    JavaScriptSnippet("Highlight links", "document.querySelectorAll('a').forEach(a => a.style.outline = '2px solid #5DD6FF');"),
+    JavaScriptSnippet("Highlight forms", "document.querySelectorAll('form,input,button,select,textarea').forEach(el => el.style.outline = '2px solid #FFCA70');"),
+    JavaScriptSnippet("Show image alts", "document.querySelectorAll('img').forEach(img => { img.title = img.alt || '(no alt text)'; });"),
+    JavaScriptSnippet("Log storage", "console.log({ localStorage: {...localStorage}, sessionStorage: {...sessionStorage} });"),
+    JavaScriptSnippet("Remove fixed elements", "document.querySelectorAll('*').forEach(el => { if (getComputedStyle(el).position === 'fixed') el.remove(); });"),
+)
+
 data class ThemePreset(val name: String, val primary: String, val secondary: String)
 val themePresets = listOf(
     ThemePreset("Graphite", "5DD6FF", "8DF5C4"), ThemePreset("Ocean", "64B5F6", "80CBC4"),
@@ -81,6 +93,7 @@ data class AppSettings(
     val autoClearConsole: Boolean = false,
     val consoleLevel: String = "ALL",
     val searchEngine: SearchEngine = SearchEngine.Google,
+    val startingPageUrl: String = "https://developer.android.com",
     val defaultIncognito: Boolean = false,
     val keepScreenOn: Boolean = false,
     val desktopByDefault: Boolean = false,
@@ -115,11 +128,13 @@ data class AppSettings(
         userAgents = userAgents.map(String::trim).filter { UserAgentEntryValidator.error(it) == null }.distinct().take(MAX_USER_AGENTS),
         cssInjection = cssInjection.take(MAX_INJECTION_LENGTH),
         javaScriptInjection = javaScriptInjection.take(MAX_INJECTION_LENGTH),
+        startingPageUrl = startingPageUrl.trim().take(MAX_STARTING_PAGE_LENGTH).ifBlank { "https://developer.android.com" },
     )
 
     companion object {
         const val MAX_USER_AGENTS = 12
         const val MAX_INJECTION_LENGTH = 8_000
+        const val MAX_STARTING_PAGE_LENGTH = 2_048
         val CONSOLE_LEVELS = setOf("ALL", "ERRORS", "WARNING", "INFO", "LOG", "DEBUG")
     }
 }
@@ -197,6 +212,7 @@ object AppSettingsJson {
             put("autoClearConsole", safe.autoClearConsole)
             put("consoleLevel", safe.consoleLevel)
             put("searchEngine", safe.searchEngine.name)
+            put("startingPageUrl", safe.startingPageUrl)
             put("defaultIncognito", safe.defaultIncognito)
             put("keepScreenOn", safe.keepScreenOn)
             put("desktopByDefault", safe.desktopByDefault)
@@ -270,7 +286,7 @@ object AppSettingsJson {
             appearance = enum("appearance", AppearanceMode.entries.toTypedArray()), addressBarPosition = enum("addressBarPosition", AddressBarPosition.entries.toTypedArray()),
             sourceFontSizeSp = int("sourceFontSizeSp"), showSourceLineNumbers = bool("showSourceLineNumbers"), wrapSourceLines = bool("wrapSourceLines"), syntaxTheme = enum("syntaxTheme", SyntaxTheme.entries.toTypedArray()),
             consoleTimestamps = bool("consoleTimestamps"), preserveConsoleOnNavigation = bool("preserveConsoleOnNavigation"), autoClearConsole = bool("autoClearConsole"), consoleLevel = string("consoleLevel"),
-            searchEngine = enum("searchEngine", SearchEngine.entries.toTypedArray()), defaultIncognito = bool("defaultIncognito"), keepScreenOn = bool("keepScreenOn"), desktopByDefault = bool("desktopByDefault"), blockImagesByDefault = bool("blockImagesByDefault"),
+            searchEngine = enum("searchEngine", SearchEngine.entries.toTypedArray()), startingPageUrl = if (root.has("startingPageUrl")) string("startingPageUrl") else "https://developer.android.com", defaultIncognito = bool("defaultIncognito"), keepScreenOn = bool("keepScreenOn"), desktopByDefault = bool("desktopByDefault"), blockImagesByDefault = bool("blockImagesByDefault"),
             preferredCopyFormat = enum("preferredCopyFormat", CopyFormat.entries.toTypedArray()), clearOnExit = ClearOnExit(clearBool("history"), clearBool("bookmarks"), clearBool("webData")), doNotTrack = bool("doNotTrack"),
             userAgents = userAgents, cssInjection = string("cssInjection"), javaScriptInjection = string("javaScriptInjection"), copyVibration = bool("copyVibration"), downloadFolderUri = string("downloadFolderUri"),
         ).sanitized()

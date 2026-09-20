@@ -55,6 +55,7 @@ data class BrowserShellState(
     val favicon: Bitmap? = null,
     val feedback: String? = null,
     val consoleQuery: String = "",
+    val consoleInput: String = "",
     val pausedConsoleEntries: List<ConsoleEntry>? = null,
     val consoleEntries: List<ConsoleEntry> = emptyList(),
     val consoleFilter: ConsoleFilter = ConsoleFilter.ALL,
@@ -134,6 +135,8 @@ sealed interface BrowserAction {
     data object ExportConsole : BrowserAction
     data class ConsoleExportCompleted(val message: String) : BrowserAction
     data class SetConsoleQuery(val query: String) : BrowserAction
+    data class SetConsoleInput(val input: String) : BrowserAction
+    data object RunConsoleInput : BrowserAction
     data object ToggleConsolePause : BrowserAction
     data object ToggleLiveConsole : BrowserAction
     data object ToggleSelectionMode : BrowserAction
@@ -164,6 +167,7 @@ sealed interface BrowserAction {
     data object ExportSettings : BrowserAction
     data object ImportSettings : BrowserAction
     data object PickDownloadFolder : BrowserAction
+    data object UseCurrentPageAsStart : BrowserAction
     data class DownloadFolderSelected(val uri: String) : BrowserAction
     data object ApplyDeveloperSettings : BrowserAction
     data object OpenTabs : BrowserAction
@@ -184,6 +188,7 @@ sealed interface BrowserAction {
     data object OpenSaveMenu : BrowserAction
     data object CloseSaveMenu : BrowserAction
     data class SavePage(val kind: PageExportKind) : BrowserAction
+    data object SavePageArchive : BrowserAction
     data class PageSaved(val success: Boolean) : BrowserAction
     data class OpenLibrary(val view: LibraryView) : BrowserAction
     data object CloseLibrary : BrowserAction
@@ -249,6 +254,8 @@ fun reduce(state: BrowserShellState, action: BrowserAction): BrowserShellState =
     BrowserAction.ExportConsole -> state
     is BrowserAction.ConsoleExportCompleted -> state.copy(feedback = action.message)
     is BrowserAction.SetConsoleQuery -> state.copy(consoleQuery = action.query.take(500))
+    is BrowserAction.SetConsoleInput -> state.copy(consoleInput = action.input.take(AppSettings.MAX_INJECTION_LENGTH))
+    BrowserAction.RunConsoleInput -> state
     BrowserAction.ToggleConsolePause -> state.copy(pausedConsoleEntries = if (state.pausedConsoleEntries == null) state.consoleEntries else null)
     BrowserAction.ToggleLiveConsole -> state.copy(isLiveConsole = !state.isLiveConsole, isLiveNetworkOpen = false, selectedTool = QuickTool.Console)
     BrowserAction.ToggleSelectionMode -> state.copy(appSettings = state.appSettings.copy(nativeTextSelection = !state.appSettings.nativeTextSelection))
@@ -284,6 +291,7 @@ fun reduce(state: BrowserShellState, action: BrowserAction): BrowserShellState =
         state.copy(appSettingsDraft = it, feedback = "Settings imported. Apply to use them.")
     } ?: state.copy(feedback = action.error ?: "Settings import failed")
     is BrowserAction.DownloadFolderSelected -> state.copy(appSettingsDraft = state.appSettingsDraft.copy(downloadFolderUri = action.uri))
+    BrowserAction.UseCurrentPageAsStart -> state.copy(appSettingsDraft = state.appSettingsDraft.copy(startingPageUrl = state.currentUrl))
     BrowserAction.ApplyDeveloperSettings -> {
         val error = if (state.developerDraft.userAgentMode == UserAgentMode.Custom) UserAgentValidator.error(state.developerDraft.customUserAgent) else null
         if (error != null) state.copy(userAgentError = error)
@@ -316,6 +324,7 @@ fun reduce(state: BrowserShellState, action: BrowserAction): BrowserShellState =
     BrowserAction.OpenSaveMenu -> state.copy(isMenuOpen = false, isSaveMenuOpen = true)
     BrowserAction.CloseSaveMenu -> state.copy(isSaveMenuOpen = false)
     is BrowserAction.SavePage -> state.copy(isSaveMenuOpen = false)
+    BrowserAction.SavePageArchive -> state.copy(isSaveMenuOpen = false)
     is BrowserAction.PageSaved -> state.copy(feedback = if (action.success) "Page saved" else "Save failed")
     is BrowserAction.OpenLibrary -> state.copy(isMenuOpen = false, libraryView = action.view)
     BrowserAction.CloseLibrary -> state.copy(libraryView = null)

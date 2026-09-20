@@ -20,6 +20,7 @@ import dev.lightcopy.browser.reader.ReaderScripts
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import java.net.URI
+import org.json.JSONObject
 
 class BrowserController {
     private var webView: WebView? = null
@@ -37,6 +38,14 @@ class BrowserController {
     fun find(query: String) { if (query.isBlank()) clearFind() else webView?.findAllAsync(query) }
     fun findNext(forward: Boolean) { webView?.findNext(forward) }
     fun clearFind() { webView?.clearMatches() }
+    fun runJavaScript(code: String, onResult: (String) -> Unit) {
+        val view = webView ?: return onResult("No page is available.")
+        view.evaluateJavascript("(0,eval)(${JSONObject.quote(code)})") { result -> onResult(result ?: "undefined") }
+    }
+    fun saveWebArchive(path: String, onResult: (String?) -> Unit) {
+        val view = webView ?: return onResult(null)
+        view.saveWebArchive(path, false, onResult)
+    }
     fun reader(onResult: (ReaderResult) -> Unit) {
         val view = webView ?: return onResult(ReaderResult(error = "No page is available."))
         view.evaluateJavascript(ReaderScripts.EXTRACT) { onResult(ReaderResultDecoder.decode(it)) }
